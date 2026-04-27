@@ -1,0 +1,15 @@
+#!/bin/bash
+# 代理开关脚本
+# 用法: source proxyon   开启代理
+#       source proxyoff  关闭代理
+
+PROXY_HOST="127.0.0.1"
+PROXY_PORT="7890"  # 常见端口: 7890(Clash), 1080(SS), 8080(V2Ray)
+
+export http_proxy="http://${PROXY_HOST}:${PROXY_PORT}"
+export https_proxy="http://${PROXY_HOST}:${PROXY_PORT}"
+export all_proxy="socks5://${PROXY_HOST}:${PROXY_PORT}"
+export no_proxy="localhost,127.0.0.1,::1"
+
+echo "✓ 代理已开启: ${PROXY_HOST}:${PROXY_PORT}"
+echo "  http_proxy=${http_proxy}"

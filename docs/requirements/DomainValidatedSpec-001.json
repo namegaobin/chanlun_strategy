@@ -1,0 +1,89 @@
+{
+  "$schema": "tdd-domain-validated-spec/v1",
+  "source_spec_id": "RS-001",
+  "validated_at": "2026-04-27T18:10:00+08:00",
+  "validator": "tdd-orchestrator",
+
+  "domain_validation": {
+    "theory_compliance": [
+      {
+        "rule_id": "CL-BI-001",
+        "rule": "一笔至少包含5根K线",
+        "source": "缠中说禅教你炒股票第62课",
+        "status": "pass",
+        "evidence": "RequirementSpec invariants 明确规定'笔至少包含5根K线'"
+      },
+      {
+        "rule_id": "CL-BI-002",
+        "rule": "笔必须顶底交替",
+        "source": "缠中说禅教你炒股票第62课",
+        "status": "pass",
+        "evidence": "FU-002 invariants: '笔序列必须是：上→下→上→下...'"
+      },
+      {
+        "rule_id": "CL-BI-003",
+        "rule": "向上笔终点>起点，向下笔终点<起点",
+        "source": "缠中说禅教你炒股票第62课",
+        "status": "pass",
+        "evidence": "FU-001 invariants 明确规定方向一致性"
+      },
+      {
+        "rule_id": "CL-BI-004",
+        "rule": "笔必须由一个顶分型和一个底分型构成",
+        "source": "缠中说禅教你炒股票第62课",
+        "status": "pass",
+        "evidence": "FU-001 invariants 第一条"
+      }
+    ],
+
+    "detected_business_bugs": [
+      {
+        "id": "BB-001",
+        "severity": "P0",
+        "description": "当前代码 min_klines=4 违反缠论原文'至少5根K线'规则",
+        "impact": "可能生成不合规的弱笔",
+        "recommendation": "恢复为 min_klines=5，但添加笔延伸逻辑处理K线不足情况"
+      },
+      {
+        "id": "BB-002",
+        "severity": "P0",
+        "description": "当前代码在笔无效时简单跳过，导致序列断裂",
+        "impact": "生成连续同向笔，违反缠论基本规则",
+        "recommendation": "添加分型重新匹配逻辑，当笔无效时尝试下一个分型对"
+      },
+      {
+        "id": "BB-003",
+        "severity": "P1",
+        "description": "穿越中轴逻辑在笔数<3时未启用",
+        "impact": "前3笔可能不符合缠论要求",
+        "recommendation": "保持当前逻辑（前3笔不要求穿越中轴是合理的）"
+      }
+    ],
+
+    "corrected_invariants": [
+      {
+        "original": "min_klines=4（代码当前值）",
+        "corrected": "min_klines=5（缠论原文标准）",
+        "reason": "缠论原文：顶和底之间至少有一根K线不属于顶底分型，即至少5根"
+      },
+      {
+        "original": "笔无效时跳过",
+        "corrected": "笔无效时重新匹配分型对",
+        "reason": "确保笔序列顶底交替，不断裂"
+      }
+    ]
+  },
+
+  "implementation_guidance": {
+    "algorithm": "改进的分型匹配算法",
+    "pseudocode": "```\nfor i in range(len(fractals) - 1):\n    for j in range(i + 1, len(fractals)):\n        if fractals[i] and fractals[j] 是顶底交替:\n            if K线数量 >= 5:\n                if 方向一致性检查通过:\n                    if 穿越中轴检查通过:\n                        生成笔\n                        break  # 找到有效笔，继续下一轮\n```",
+    "key_changes": [
+      "1. 恢复 min_klines=5（缠论标准）",
+      "2. 添加双重循环确保分型重新匹配",
+      "3. 添加穿越中轴检查（前3笔后启用）",
+      "4. 生成笔后立即验证序列有效性"
+    ]
+  },
+
+  "gate_0_5_status": "passed_with_corrections"
+}

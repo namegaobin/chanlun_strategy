@@ -1,0 +1,137 @@
+{
+  "$schema": "tdd-requirement-spec/v1",
+  "id": "RS-001",
+  "title": "缠论笔划分逻辑修复",
+  "source": "debug_bi.py 验证发现的连续同向笔问题",
+  "domain": "chanlun",
+  "priority": "P0",
+  "created_at": "2026-04-27T18:04:00+08:00",
+  
+  "problem_statement": {
+    "description": "当前 build_bi_from_fractals() 函数在处理分型序列时，因 min_klines=4 要求过于严格，导致部分有效笔被跳过，最终生成连续同向笔，违反缠论基本规则",
+    "evidence": {
+      "test_data": "15根K线，5个分型（顶底顶底顶）",
+      "expected": "4笔（下上下上）或合理过滤后至少顶底交替",
+      "actual": "2笔（上上）",
+      "root_cause": "中间向下笔因K线数量=3被跳过"
+    }
+  },
+
+  "functional_units": [
+    {
+      "id": "FU-001",
+      "name": "笔的严格定义验证",
+      "description": "严格按缠论原文验证笔的成立条件",
+      "priority": "P0",
+      "invariants": [
+        "笔必须由一个顶分型和一个底分型构成",
+        "笔必须顶底交替（不能连续同向笔）",
+        "向上笔：终点价格 > 起点价格",
+        "向下笔：终点价格 < 起点价格",
+        "笔至少包含5根K线（缠论原文标准）"
+      ],
+      "acceptance_criteria": [
+        {
+          "id": "AC-001",
+          "given": "5个分型：顶(11.30) → 底(10.00) → 顶(11.80) → 底(10.50) → 顶(12.30)",
+          "when": "执行笔划分逻辑",
+          "then": "生成的笔必须顶底交替，不允许连续同向笔"
+        },
+        {
+          "id": "AC-002",
+          "given": "两个分型之间只有3根K线",
+          "when": "验证笔的成立条件",
+          "then": "该笔无效，但必须处理后续分型以确保序列正确"
+        },
+        {
+          "id": "AC-003",
+          "given": "向上笔终点价格 <= 起点价格",
+          "when": "验证笔的方向一致性",
+          "then": "该笔无效，继续寻找下一个有效分型对"
+        }
+      ]
+    },
+
+    {
+      "id": "FU-002",
+      "name": "笔序列完整性保证",
+      "description": "确保笔序列顶底交替，无断裂",
+      "priority": "P0",
+      "invariants": [
+        "笔序列必须是：上→下→上→下... 或 下→上→下→上...",
+        "如果中间笔无效，需要重新匹配分型对",
+        "不能因为K线数量不足就简单跳过导致序列断裂"
+      ],
+      "acceptance_criteria": [
+        {
+          "id": "AC-004",
+          "given": "分型序列：顶A → 底B → 顶C → 底D → 顶E",
+          "when": "顶C到底D的K线数量不足",
+          "then": "应尝试：顶A→底D，或底B→顶E，确保序列不断裂"
+        },
+        {
+          "id": "AC-005",
+          "given": "生成的笔序列",
+          "when": "检查序列有效性",
+          "then": "相邻两笔方向必须相反"
+        }
+      ]
+    },
+
+    {
+      "id": "FU-003",
+      "name": "穿越中轴逻辑",
+      "description": "笔必须穿越前一笔中轴（形成中枢后）",
+      "priority": "P1",
+      "invariants": [
+        "前3笔不要求穿越中轴（尚未形成中枢）",
+        "第4笔开始，必须穿越前一笔中轴",
+        "向上笔：终点应高于中轴",
+        "向下笔：终点应低于中轴"
+      ],
+      "acceptance_criteria": [
+        {
+          "id": "AC-006",
+          "given": "已有3笔，形成中枢",
+          "when": "第4笔向上笔生成",
+          "then": "终点价格应 > 前一笔中轴价格"
+        }
+      ]
+    }
+  ],
+
+  "tech_stack": {
+    "language": "python",
+    "framework": "pytest",
+    "file": "src/chanlun_structure_v2.py",
+    "function": "build_bi_from_fractals"
+  },
+
+  "edge_cases": [
+    {
+      "case": "K线数量刚好等于5",
+      "expected": "有效笔"
+    },
+    {
+      "case": "K线数量为4",
+      "expected": "按放宽规则可接受，但需明确标注"
+    },
+    {
+      "case": "K线数量为3",
+      "expected": "无效笔，需要处理分型匹配"
+    },
+    {
+      "case": "两个顶分型相邻",
+      "expected": "保留更高的顶分型（已在filter_fractals中处理）"
+    }
+  ],
+
+  "chanlun_theory_reference": {
+    "source": "缠中说禅教你炒股票",
+    "rules": [
+      "笔：两个相邻的顶和底之间构成一笔",
+      "笔的确认：顶和底之间至少有一根K线不属于顶分型和底分型",
+      "换言之：一笔至少包含5根K线（顶分型中间1根 + 底分型中间1根 + 中间至少1根）"
+    ]
+  }
+}

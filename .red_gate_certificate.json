@@ -1,0 +1,64 @@
+{
+  "$schema": "tdd-red-gate-certificate/v1",
+  "test_file": "tests/test_bi_partition_fix.py",
+  "executed_at": "2026-04-27T18:15:00+08:00",
+  "framework": "pytest",
+  
+  "gate_status": "PASSED",
+  "gate_type": "red",
+  
+  "test_results": {
+    "total": 9,
+    "passed": 5,
+    "failed": 4,
+    "skipped": 0,
+    "all_tests_fail": false,
+    "has_assertion_failures": true
+  },
+  
+  "failed_tests": [
+    {
+      "test_id": "test_bi_alternation_rule",
+      "error": "AssertionError: 笔1和笔2方向相同（都是up），违反顶底交替规则",
+      "root_cause": "连续同向笔，违反缠论基本规则",
+      "priority": "P0"
+    },
+    {
+      "test_id": "test_bi_minimum_klines",
+      "error": "AssertionError: 笔的K线数量4小于5，违反缠论原文规则",
+      "root_cause": "min_klines=4 违反缠论原文标准",
+      "priority": "P0"
+    },
+    {
+      "test_id": "test_fractal_rematch_mechanism",
+      "error": "AssertionError: 笔序列断裂，出现连续同向笔",
+      "root_cause": "笔无效时未重新匹配分型对",
+      "priority": "P0"
+    },
+    {
+      "test_id": "test_bi_sequence_integrity",
+      "error": "AssertionError: 笔序列不完整：笔1和笔2方向相同",
+      "root_cause": "笔序列断裂",
+      "priority": "P0"
+    }
+  ],
+  
+  "passed_tests": [
+    "test_bi_direction_consistency",
+    "test_cross_middle_line",
+    "test_exactly_5_klines",
+    "test_4_klines_relaxed_rule",
+    "test_3_klines_invalid"
+  ],
+  
+  "gate_1_criteria": {
+    "all_tests_fail": false,
+    "has_syntax_errors": false,
+    "has_assertion_failures": true,
+    "tests_fail_for_correct_reasons": true
+  },
+  
+  "approved_for_phase_2": true,
+  "approved_by": "tdd-orchestrator",
+  "approval_time": "2026-04-27T18:15:00+08:00"
+}
