@@ -1,0 +1,178 @@
+{
+  "$schema": "tdd-domain-validated-spec/v1",
+  "source_spec_id": "RS-OPT-001",
+  "validated_at": "2026-04-28T02:40:00+08:00",
+  "validator": "chanlun-expert",
+  
+  "validation_summary": {
+    "overall_status": "failed_with_critical_bugs",
+    "fu_010_status": "failed",
+    "fu_011_status": "not_implemented"
+  },
+
+  "fu_010_validation": {
+    "feature_unit": "市场环境识别",
+    "invariants": [
+      {
+        "id": "FU-010-INV-001",
+        "description": "趋势市定义：两个中枢完全不重叠（前ZG < 当前ZD 或 前 ZD > 当前ZG）",
+        "source": "缠中说禅教你炒股票第17课",
+        "status": "implementation_mismatch",
+        "evidence": "参考实现 chanClass.py cal_bs_type() 方法正确实现了此规则：上升趋势 = pre_ZG < cur_ZD，下降趋势 = pre_ZD > cur_ZG",
+        "implementation_file": "src/market_filter.py",
+        "implementation_method": "detect_market_environment()"
+      },
+      {
+        "id": "FU-010-INV-002", 
+        "description": "震荡市定义：中枢重叠或单中枢延伸",
+        "source": "缠中说禅教你炒股票第20课",
+        "status": "implementation_mismatch",
+        "evidence": "参考实现 chanClass.py cal_bs_type() 方法返回'盘整'表示中枢重叠/延伸",
+        "implementation_file": "src/market_filter.py",
+        "implementation_method": "detect_market_environment()"
+      }
+    ],
+    
+    "chanlun_original_evidence": [
+      {
+        "lesson": "第17课",
+        "quote": "走势中枢：某级别走势类型中，被至少三个连续次级别走势类型所重叠的部分...趋势：在任何级别的任何走势中，某完成的走势类型至少包含两个以上依次同向的走势中枢，就称为该级别的趋势。",
+        "interpretation": "趋势 = 两个或以上同向且不重叠的中枢"
+      },
+      {
+        "lesson": "第20课", 
+        "quote": "中枢的延伸：中枢的延伸是指中枢区间不变，但中枢级别扩大的情况。",
+        "interpretation": "中枢延伸/重叠 = 盘整，不是趋势"
+      }
+    ],
+    
+    "detected_business_bugs": [
+      {
+        "id": "BB-OPT-001",
+        "severity": "P0",
+        "title": "市场环境识别完全偏离缠论理论",
+        "description": "market_filter.py 使用均线排列(MA5/MA10/MA20/MA60)、ADX指标、趋势斜率来判断牛市/熊市/震荡市，完全违背缠论用中枢判断趋势的原教旨",
+        "impact": "严重：导致市场环境判断与缠论理论不符，可能产生错误的策略决策",
+        "affected_file": "src/market_filter.py",
+        "affected_function": "detect_market_environment(), calculate_ma_status(), calculate_adx(), detect_market_trend()",
+        "recommendation": "重写 market_filter.py，使用 chanClass.cal_bs_type() 的逻辑来判断趋势/盘整，然后映射到牛熊震荡"
+      },
+      {
+        "id": "BB-OPT-002",
+        "severity": "P0",
+        "title": "缺少缠论中枢数据作为判断依据",
+        "description": "market_filter.py 的 detect_market_environment() 函数只需要 DataFrame 参数，没有中枢列表(pivot_list)，无法按缠论规则判断",
+        "impact": "严重：无法实现缠论趋势判断",
+        "affected_file": "src/market_filter.py",
+        "recommendation": "修改函数签名，接收 pivot_list 参数，使用中枢关系判断趋势"
+      },
+      {
+        "id": "BB-OPT-003",
+        "severity": "P1",
+        "title": "测试用例未实现",
+        "description": "test_market_filter.py 中所有测试用例都是空实现，只有 pass 语句",
+        "impact": "中等：无法验证功能正确性",
+        "affected_file": "tests/test_market_filter.py",
+        "recommendation": "实现测试用例，覆盖趋势市和震荡市的识别"
+      }
+    ]
+  },
+
+  "fu_011_validation": {
+    "feature_unit": "多信号组合策略",
+    "invariants": [
+      {
+        "id": "FU-011-INV-001",
+        "description": "趋势上涨市：优先用二三买（顺势）",
+        "source": "缠中说禅实战原则",
+        "status": "not_implemented",
+        "evidence": "代码中没有找到多信号组合策略的实现"
+      },
+      {
+        "id": "FU-011-INV-002",
+        "description": "趋势下跌市：用一买（背驰抄底）",
+        "source": "缠中说禅实战原则", 
+        "status": "not_implemented",
+        "evidence": "代码中没有找到多信号组合策略的实现"
+      },
+      {
+        "id": "FU-011-INV-003",
+        "description": "震荡市：一买高抛低吸",
+        "source": "缠中说禅实战原则",
+        "status": "not_implemented",
+        "evidence": "代码中没有找到多信号组合策略的实现"
+      }
+    ],
+    
+    "chanlun_original_evidence": [
+      {
+        "lesson": "第18课",
+        "quote": "第二类买点：第一类买点之后，出现第一次回调的低点就是第二类买点...第二类买点的强度要看第一次回调是否触及中枢。",
+        "interpretation": "二三买适合趋势延续，顺势操作"
+      },
+      {
+        "lesson": "第29课",
+        "quote": "转折的级别：趋势背驰产生转折，转折的级别与背驰的级别有关。",
+        "interpretation": "一买是背驰转折点，适合抄底"
+      }
+    ],
+    
+    "detected_business_bugs": [
+      {
+        "id": "BB-OPT-004",
+        "severity": "P0",
+        "title": "多信号组合策略完全缺失",
+        "description": "RequirementSpec 要求根据市场环境选择不同买卖点策略，但代码中只实现了信号过滤(should_filter_signal)，没有实现'趋势市用二三买、熊市用一买、震荡市高抛低吸'的组合策略",
+        "impact": "严重：核心功能缺失",
+        "recommendation": "新建 src/signal_combination.py，实现市场环境→买卖点选择的映射逻辑"
+      },
+      {
+        "id": "BB-OPT-005",
+        "severity": "P1",
+        "title": "买卖点优先级未定义",
+        "description": "需求中提到的'优先用二三买'具体优先级逻辑未实现，如：趋势上涨时，如果同时出现一买和二买，应该选哪个？",
+        "impact": "中等：策略决策不明确",
+        "recommendation": "定义买卖点优先级规则并实现"
+      }
+    ]
+  },
+
+  "reference_implementation_analysis": {
+    "file": "chanClass.py",
+    "key_methods": [
+      {
+        "method": "cal_bs_type()",
+        "lines": "2297-2345",
+        "purpose": "根据中枢关系判断趋势/盘整",
+        "correctness": "正确实现了缠论第17课的趋势判断规则",
+        "code_evidence": "pre_ZG < cur_ZD → 上升趋势; pre_ZD > cur_ZG → 下降趋势; 否则 → 盘整"
+      },
+      {
+        "method": "on_pivot()",
+        "lines": "1105-1800+",
+        "purpose": "中枢计算和买卖点识别",
+        "correctness": "正确实现了缠论笔级别中枢和三类买卖点"
+      }
+    ]
+  },
+
+  "gate_0_5_status": "failed",
+  
+  "recommendations": [
+    {
+      "priority": "P0",
+      "action": "重写 market_filter.py，使用缠论中枢关系判断趋势",
+      "details": "调用 chanClass.cal_bs_type() 或实现相同逻辑，删除均线/ADX判断代码"
+    },
+    {
+      "priority": "P0", 
+      "action": "实现多信号组合策略",
+      "details": "新建模块，根据市场环境选择买卖点：趋势上涨→二三买优先，趋势下跌→一买优先，震荡→高抛低吸"
+    },
+    {
+      "priority": "P1",
+      "action": "实现测试用例",
+      "details": "补全 test_market_filter.py 中的测试用例，确保中枢关系判断正确"
+    }
+  ]
+}

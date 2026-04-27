@@ -80,12 +80,18 @@ from .ai_evaluator import (
     build_evaluation_prompt
 )
 
-from .backtest_strategy import (
-    ChanLunStrategy,
-    run_backtest,
-    calculate_performance_metrics,
-    generate_report
-)
+try:
+    from .backtest_strategy import (
+        ChanLunStrategy,
+        run_backtest,
+        calculate_performance_metrics,
+        generate_report
+    )
+except ImportError:
+    ChanLunStrategy = None
+    run_backtest = None
+    calculate_performance_metrics = None
+    generate_report = None
 
 __version__ = '2.0.0'
 __all__ = [
