@@ -369,7 +369,7 @@ def filter_fractals(fractals: List[Fractal]) -> List[Fractal]:
 def build_bi_from_fractals(
     fractals: List[Fractal],
     df: pd.DataFrame,
-    min_klines: int = 5,  # 缠论原文标准：至少5根K线
+    min_klines: int = 4,  # 缠论原文标准：至少4根K线（独立K线≥1）
     debug: bool = False
 ) -> List[Bi]:
     """
@@ -446,20 +446,6 @@ def build_bi_from_fractals(
             high = bi_data['high'].max()
             low = bi_data['low'].min()
 
-            # 检查穿越前一笔的中轴（前3笔后启用）
-            if bi_list and len(bi_list) >= 3:
-                prev_bi = bi_list[-1]
-                mid_line = (prev_bi.high + prev_bi.low) / 2
-
-                if direction == Direction.UP:
-                    # 向上笔：终点应高于中轴（允许10%误差）
-                    if end_price < mid_line * 0.9:
-                        continue
-                else:
-                    # 向下笔：终点应低于中轴（允许10%误差）
-                    if end_price > mid_line * 1.1:
-                        continue
-
             # 找到有效的笔
             bi = Bi(
                 direction=direction,
@@ -480,20 +466,10 @@ def build_bi_from_fractals(
 
         if found_valid_bi and best_bi:
             bi_list.append(best_bi)
-            # 关键：下一笔的起点必须是相反类型的分型
-            # 如果当前笔终点是顶分型，下一笔起点必须是顶分型（向下笔）
-            # 如果当前笔终点是底分型，下一笔起点必须是底分型（向上笔）
-            # 所以我们需要找到下一个与终点分型同类型的分型作为新起点
-            end_fractal_type = fractals[best_j].type
-            next_i = best_j
-            for k in range(best_j + 1, len(fractals)):
-                if fractals[k].type == end_fractal_type:
-                    next_i = k
-                    break
-            else:
-                # 没找到同类型的，就从终点分型的下一个开始
-                next_i = best_j + 1
-            i = next_i
+            # 修复：下一笔的起点就是当前笔的终点分型
+            # 缠论原文：一笔结束后，下一笔从该笔的终点分型开始
+            # 不应该跳过中间的分型
+            i = best_j
         else:
             # 没有找到有效的笔，尝试下一个起点分型
             i += 1
@@ -573,7 +549,12 @@ def calculate_zhongshu_from_bi(
 
 def detect_all_zhongshu(bi_list: List[Bi], min_bi: int = 3) -> List[Zhongshu]:
     """
-    检测所有中枢
+    检测所有中枢（增量式检测 + 方向交替验证）
+    
+    修复：
+    1. 添加方向交替验证（缠论原文：中枢3笔必须方向交替）
+    2. 改用增量式检测（避免滑动窗口产生重复中枢）
+    3. 实现中枢延伸判断（缠论原文：新笔触及中枢区间则延伸）
     
     Args:
         bi_list: 笔列表
@@ -586,21 +567,37 @@ def detect_all_zhongshu(bi_list: List[Bi], min_bi: int = 3) -> List[Zhongshu]:
         return []
     
     zhongshu_list = []
+    current_zhongshu = None
     
-    # 滑动窗口检测中枢
-    for i in range(len(bi_list) - min_bi + 1):
-        window_bi = bi_list[i:i + min_bi]
+    # 增量式检测：从第 min_bi 笔开始
+    for i in range(min_bi, len(bi_list) + 1):
+        window_bi = bi_list[i - min_bi:i]
         
-        # 计算中枢
+        # 修复 1：添加方向交替验证
+        # 缠论原文：中枢的3笔必须是上-下-上 或 下-上-下
+        directions_alternate = True
+        for j in range(len(window_bi) - 1):
+            if window_bi[j].direction == window_bi[j + 1].direction:
+                directions_alternate = False
+                break
+        
+        if not directions_alternate:
+            continue  # 方向不交替，不能形成中枢
+        
+        # 计算中枢区间
         zg = min(bi.high for bi in window_bi)
         zd = max(bi.low for bi in window_bi)
         
-        if zg > zd:
-            # 有效中枢
-            enter_bi = bi_list[i - 1] if i > 0 else None
-            exit_bi = bi_list[i + min_bi] if i + min_bi < len(bi_list) else None
+        # 验证中枢有效性
+        if zg <= zd:
+            continue  # 无重叠，无效中枢
+        
+        if current_zhongshu is None:
+            # 初始中枢
+            enter_bi = bi_list[i - min_bi - 1] if i - min_bi > 0 else None
+            exit_bi = bi_list[i] if i < len(bi_list) else None
             
-            zhongshu = Zhongshu(
+            current_zhongshu = Zhongshu(
                 zg=zg,
                 zd=zd,
                 start_index=window_bi[0].start_index,
@@ -610,11 +607,35 @@ def detect_all_zhongshu(bi_list: List[Bi], min_bi: int = 3) -> List[Zhongshu]:
                 enter_bi=enter_bi,
                 exit_bi=exit_bi
             )
+            zhongshu_list.append(current_zhongshu)
+        else:
+            # 修复 2：判断是中枢延伸还是新生
+            # 缠论原文：新笔触及中枢区间 [ZD, ZG]，中枢延伸
+            new_bi = window_bi[-1]
             
-            zhongshu_list.append(zhongshu)
-    
-    # 过滤重叠的中枢（只保留最大的）
-    # TODO: 实现中枢延伸和扩展判断
+            # 新笔触及当前中枢区间
+            if new_bi.low <= current_zhongshu.zg and new_bi.high >= current_zhongshu.zd:
+                # 中枢延伸：更新结束位置
+                current_zhongshu.end_index = new_bi.end_index
+                # 更新中枢区间（取交集）
+                current_zhongshu.zg = min(current_zhongshu.zg, zg)
+                current_zhongshu.zd = max(current_zhongshu.zd, zd)
+            else:
+                # 新笔脱离中枢区间，形成新中枢
+                enter_bi = bi_list[i - min_bi - 1] if i - min_bi > 0 else None
+                exit_bi = bi_list[i] if i < len(bi_list) else None
+                
+                current_zhongshu = Zhongshu(
+                    zg=zg,
+                    zd=zd,
+                    start_index=window_bi[0].start_index,
+                    end_index=window_bi[-1].end_index,
+                    level=1,
+                    bi_list=window_bi,
+                    enter_bi=enter_bi,
+                    exit_bi=exit_bi
+                )
+                zhongshu_list.append(current_zhongshu)
     
     return zhongshu_list
 
