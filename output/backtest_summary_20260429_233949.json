@@ -1,0 +1,37 @@
+{
+  "timestamp": "20260429_233949",
+  "data_range": "2026-02-28 16:00:00 ~ 2026-03-31 16:00:00",
+  "klines": 8929,
+  "bi_count": 186,
+  "zs_count": 44,
+  "signal_count": 171,
+  "strategies": {
+    "TYPE_1": {
+      "trades": 10,
+      "wins": 6,
+      "win_rate": 60.0,
+      "total_return": 0.4921,
+      "annual_return": 5.7941,
+      "max_profit": 3.0,
+      "max_loss": -1.5
+    },
+    "TYPE_2": {
+      "trades": 70,
+      "wins": 50,
+      "win_rate": 71.43,
+      "total_return": 18.4724,
+      "annual_return": 217.4971,
+      "max_profit": 5.0,
+      "max_loss": -2.0
+    },
+    "TYPE_3": {
+      "trades": 91,
+      "wins": 77,
+      "win_rate": 84.62,
+      "total_return": 109.4746,
+      "annual_return": 1288.9752,
+      "max_profit": 8.0,
+      "max_loss": -2.5
+    }
+  }
+}

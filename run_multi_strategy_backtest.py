@@ -211,10 +211,20 @@ class SimpleSignalDetector:
         return signals
 
 
-def fetch_btc_data(days=90):
-    print(f"\n[1] 获取BTC最近 {days} 天数据...")
-    end_time = int(datetime.now().timestamp() * 1000)
-    start_time = int((datetime.now() - timedelta(days=days)).timestamp() * 1000)
+def fetch_btc_data(days=90, start_date=None, end_date=None):
+    print(f"\n[1] 获取BTC数据...")
+    
+    # 支持日期范围
+    if start_date and end_date:
+        start_dt = datetime.strptime(start_date, '%Y-%m-%d')
+        end_dt = datetime.strptime(end_date, '%Y-%m-%d')
+        start_time = int(start_dt.timestamp() * 1000)
+        end_time = int(end_dt.timestamp() * 1000) + 86400000  # 加一天
+        days = (end_dt - start_dt).days
+    else:
+        end_time = int(datetime.now().timestamp() * 1000)
+        start_time = int((datetime.now() - timedelta(days=days)).timestamp() * 1000)
+    
     all_data, current_end = [], end_time
     
     while current_end > start_time:
@@ -307,7 +317,18 @@ def backtest_strategy(df, signals, strategy_type, config):
 
 def main():
     import json
-    df = fetch_btc_data(days=108)
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--start', default='2026-01-01')
+    parser.add_argument('--end', default='2026-04-29')
+    args, _ = parser.parse_known_args()
+    
+    from datetime import datetime
+    start_dt = datetime.strptime(args.start, '%Y-%m-%d')
+    end_dt = datetime.strptime(args.end, '%Y-%m-%d')
+    days = (end_dt - start_dt).days + 10
+    
+    df = fetch_btc_data(start_date=args.start, end_date=args.end)
     
     print("\n[2] 缠论结构分析...")
     df_proc = process_inclusion(df)
