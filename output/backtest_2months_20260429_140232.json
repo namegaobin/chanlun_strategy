@@ -1,0 +1,28 @@
+{
+  "period": "过去60天",
+  "data_range": "2026-02-28 06:05:00 ~ 2026-04-29 06:00:00",
+  "klines": 17280,
+  "strategies": {
+    "TYPE_1": {
+      "trades": 558,
+      "wins": 271,
+      "win_rate": 48.57,
+      "total_return": 16.4466,
+      "annual_return": 101.7458
+    },
+    "TYPE_2": {
+      "trades": 278,
+      "wins": 91,
+      "win_rate": 32.73,
+      "total_return": 0.249,
+      "annual_return": 1.5402
+    },
+    "TYPE_3": {
+      "trades": 470,
+      "wins": 173,
+      "win_rate": 36.81,
+      "total_return": 24.4258,
+      "annual_return": 151.1087
+    }
+  }
+}

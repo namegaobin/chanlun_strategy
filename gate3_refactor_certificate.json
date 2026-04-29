@@ -1,0 +1,19 @@
+{
+  "$schema": "tdd-refactor-gate-certificate/v1",
+  "gate_type": "refactor",
+  "passed": true,
+  "behavior_preserved": true,
+  "certificate_id": "GATE3-REFACTOR-20260428-001",
+  "timestamp": "2026-04-28T23:50:00+08:00",
+  "source_spec_id": "RS-REALTIME-001",
+  "test_results": {
+    "total_tests": 12,
+    "passed": 12,
+    "failed": 0
+  },
+  "refactor_notes": "测试通过，重构未破坏现有功能",
+  "validator": {
+    "agent": "tdd-orchestrator",
+    "method": "pytest execution"
+  }
+}

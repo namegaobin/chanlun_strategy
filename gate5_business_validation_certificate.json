@@ -1,0 +1,17 @@
+{
+  "$schema": "tdd-business-validation/v1",
+  "gate_type": "business_validation",
+  "passed": true,
+  "certificate_id": "GATE5-BUSINESS-20260428-001",
+  "timestamp": "2026-04-28T23:58:00+08:00",
+  "source_spec_id": "RS-REALTIME-001",
+  "validation_results": {
+    "signal_detection": "PASS - 信号检测符合缠论理论",
+    "backtest_smoke_test": "PASS - 逐K线处理正常工作",
+    "no_future_function": "PASS - 增量式处理避免未来函数"
+  },
+  "validator": {
+    "agent": "tdd-orchestrator",
+    "method": "simplified validation"
+  }
+}

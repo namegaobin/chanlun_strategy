@@ -1,0 +1,37 @@
+{
+  "$schema": "tdd-red-gate-certificate/v1",
+  "gate_type": "red",
+  "passed": true,
+  "all_tests_fail": true,
+  "certificate_id": "GATE1-RED-20260428-001",
+  "timestamp": "2026-04-28T16:46:00+08:00",
+  "source_spec_id": "RS-REALTIME-001",
+  "test_suite": {
+    "file": "tests/test_incremental_analyzer.py",
+    "total_tests": 12,
+    "test_cases": [
+      {"id": "TC-001", "name": "test_001_on_bar_only_uses_current_data", "priority": "P0", "status": "FAILED"},
+      {"id": "TC-002", "name": "test_002_inclusion_processing_incremental", "priority": "P0", "status": "FAILED"},
+      {"id": "TC-003", "name": "test_003_fractal_confirmation_delay", "priority": "P0", "status": "FAILED"},
+      {"id": "TC-004", "name": "test_004_bi_confirmation_delay", "priority": "P0", "status": "FAILED"},
+      {"id": "TC-005", "name": "test_005_zhongshu_confirmation_delay", "priority": "P0", "status": "FAILED"},
+      {"id": "TC-006", "name": "test_006_signal_only_after_structure_confirmed", "priority": "P0", "status": "FAILED"},
+      {"id": "TC-007", "name": "test_007_buy_1_signal", "priority": "P0", "status": "FAILED"},
+      {"id": "TC-008", "name": "test_008_buy_2_signal", "priority": "P0", "status": "FAILED"},
+      {"id": "TC-009", "name": "test_009_buy_3_signal", "priority": "P0", "status": "FAILED"},
+      {"id": "TC-010", "name": "test_010_historical_data_replay", "priority": "P0", "status": "FAILED"},
+      {"id": "TC-011", "name": "test_011_timestamp_validation", "priority": "P0", "status": "FAILED"},
+      {"id": "TC-012", "name": "test_012_decision_logging", "priority": "P1", "status": "FAILED"}
+    ]
+  },
+  "failure_analysis": {
+    "primary_reason": "ModuleNotFoundError / ImportError",
+    "explanation": "测试失败是因为实现代码尚未编写（模块不存在），符合 RED 阶段预期",
+    "is_assertion_failure": false,
+    "note": "TDD 实践中，RED 阶段的测试可以通过 ImportError 失败，这是标准做法"
+  },
+  "validator": {
+    "agent": "tdd-orchestrator",
+    "method": "pytest execution"
+  }
+}

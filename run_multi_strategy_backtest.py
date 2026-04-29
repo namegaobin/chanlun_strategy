@@ -21,6 +21,58 @@ from src.optimized_type3_detector import OptimizedType3Detector
 
 
 class SimpleSignalDetector:
+    def _get_trend(self, df, index, lookback=10):
+        """判断当前趋势：通过最近N根K线的收盘价判断"""
+        if index < lookback:
+            lookback = index
+        if lookback < 3:
+            return 'down'  # 数据不足，默认下跌
+        
+        recent_closes = df.iloc[index-lookback:index]['close'].values
+        # 简单判断：收盘价总体上涨=上涨趋势，下跌=下跌趋势
+        first_half = np.mean(recent_closes[:lookback//2])
+        second_half = np.mean(recent_closes[lookback//2:])
+        
+        if second_half > first_half:
+            return 'up'
+        else:
+            return 'down'
+    
+    def _has_divergence(self, zs, bi_list):
+        """背驰判断：离开段力度 < 进入段力度 * 0.4"""
+        if zs.enter_bi is None or zs.exit_bi is None:
+            return False
+        
+        # 计算进入段和离开段的力度（用幅度 * 成交量 或 简单幅度）
+        # 这里用笔的幅度来衡量力度
+        enter_power = abs(zs.enter_bi.end_price - zs.enter_bi.start_price)
+        exit_power = abs(zs.exit_bi.end_price - zs.exit_bi.start_price)
+        
+        # 背驰条件：离开段力度 < 进入段力度 * 0.4
+        return exit_power < enter_power * 0.4
+    
+    def _confirm_signal(self, df, index, signal_type, confirm_bars=3):
+        """信号确认：要求连续N根K线验证"""
+        if index + confirm_bars >= len(df):
+            return False
+        
+        current_price = df.iloc[index]['close']
+        
+        if signal_type == 'buy_1':
+            # 买入信号：要求后续N根K线收盘价逐步走高或至少不创新低
+            for i in range(1, confirm_bars + 1):
+                if df.iloc[index + i]['close'] < current_price:
+                    return False
+                current_price = df.iloc[index + i]['close']
+            return True
+        else:  # sell_1
+            # 卖出信号：要求后续N根K线收盘价逐步走低或至少不创新高
+            for i in range(1, confirm_bars + 1):
+                if df.iloc[index + i]['close'] > current_price:
+                    return False
+                current_price = df.iloc[index + i]['close']
+            return True
+
     def detect_all_signals(self, df, bi_list, zs_list):
         signals = []
         if not bi_list or not zs_list:
@@ -40,21 +92,38 @@ class SimpleSignalDetector:
             elif s.signal_type == 'sell_3':
                 signals.append(Signal(SignalType.SELL_3, s.confidence, s.price, df.iloc[s.index]['date'], {}, s.index))
         
-        # TYPE_1和TYPE_2仍使用原版逻辑
+        # TYPE_1 改进版：添加趋势过滤 + 背驰判断 + 信号确认
         for i, bi in enumerate(bi_list):
+            # 获取当前趋势
+            current_trend = self._get_trend(df, bi.end_index, lookback=10)
+            
             # 第一类买点：向下笔在中枢之后（趋势背驰）
-            if bi.direction == DIR_DOWN:
+            # 条件1: 下跌趋势中
+            # 条件2: 向下笔突破中枢
+            # 条件3: 背驰判断（离开段力度 < 进入段力度 * 0.4）
+            # 条件4: 信号确认（连续3根K线验证）
+            if bi.direction == DIR_DOWN and current_trend == 'down':
                 for zs in zs_list:
                     if bi.end_index > zs.end_index:
-                        signals.append(Signal(SignalType.BUY_1, 75.0, bi.low, df.iloc[bi.end_index]['date'], {'bi_idx': i, 'zs_idx': zs_list.index(zs)}, bi.end_index))
-                        break
+                        # 背驰判断
+                        if self._has_divergence(zs, bi_list):
+                            # 信号确认
+                            if self._confirm_signal(df, bi.end_index, 'buy_1', confirm_bars=3):
+                                signals.append(Signal(SignalType.BUY_1, 85.0, bi.low, df.iloc[bi.end_index]['date'], {'bi_idx': i, 'zs_idx': zs_list.index(zs), 'divergence': True}, bi.end_index))
+                                break
             
             # 第一类卖点：向上笔在中枢之后
-            if bi.direction == DIR_UP:
+            # 条件1: 上涨趋势中
+            # 条件2: 向上笔突破中枢
+            # 条件3: 背驰判断
+            # 条件4: 信号确认
+            if bi.direction == DIR_UP and current_trend == 'up':
                 for zs in zs_list:
                     if bi.end_index > zs.end_index:
-                        signals.append(Signal(SignalType.SELL_1, 75.0, bi.high, df.iloc[bi.end_index]['date'], {'bi_idx': i, 'zs_idx': zs_list.index(zs)}, bi.end_index))
-                        break
+                        if self._has_divergence(zs, bi_list):
+                            if self._confirm_signal(df, bi.end_index, 'sell_1', confirm_bars=3):
+                                signals.append(Signal(SignalType.SELL_1, 85.0, bi.high, df.iloc[bi.end_index]['date'], {'bi_idx': i, 'zs_idx': zs_list.index(zs), 'divergence': True}, bi.end_index))
+                                break
         
         # 第二类买点：一买后第一个向上笔，需满足以下条件：
         # 1. 二买价格 > 对应一买价格（一买有效性验证）
@@ -69,20 +138,39 @@ class SimpleSignalDetector:
             
             first_up_bi = up_bis[0]
             
-            # 条件1：二买价格必须高于一买价格
-            if first_up_bi.low <= sig.price:
+            # 放宽条件1：二买价格略高于一买价格（允许2%误差）
+            if first_up_bi.low < sig.price * 0.98:
                 continue
             
-            # 条件2：验证一买后价格确实上涨（向上笔的高点要高于一买价格）
-            if first_up_bi.high <= sig.price:
+            # 放宽条件2：验证一买后价格上涨（允许5%误差）
+            if first_up_bi.high < sig.price * 1.02:
                 continue
             
             # 二买价格就是向上笔的低点
             buy2_price = first_up_bi.low
             
-            signals.append(Signal(SignalType.BUY_2, 70.0, buy2_price, df.iloc[first_up_bi.start_index]['date'], 
+            signals.append(Signal(SignalType.BUY_2, 60.0, buy2_price, df.iloc[first_up_bi.start_index]['date'], 
                                   {'related_buy1': sig.index, 'buy1_price': sig.price, 'up_bi_high': first_up_bi.high}, 
                                   first_up_bi.start_index))
+        
+        # 第二类买点独立检测：基于中枢的回抽
+        # 条件：价格回调到中枢附近（ZG或ZD附近），形成支撑
+        for zs in zs_list:
+            # 向上中枢：回调到ZD附近获得支撑
+            if zs.zg > zs.zd:  # 向上中枢
+                # 找价格在ZD~ZG之间的笔（回抽笔）
+                for bi in bi_list:
+                    if bi.direction == DIR_DOWN and bi.low > zs.zd and bi.low < zs.zg:
+                        # 回抽笔后上涨
+                        next_up_bis = [b for b in bi_list if b.direction == DIR_UP and b.start_index > bi.end_index]
+                        if next_up_bis and next_up_bis[0].high > bi.high:
+                            # 产生二买信号
+                            signals.append(Signal(SignalType.BUY_2, 55.0, next_up_bis[0].low, 
+                                                  df.iloc[next_up_bis[0].start_index]['date'],
+                                                  {'zs_idx': zs_list.index(zs), 'pullback_bi': bi.end_index},
+                                                  next_up_bis[0].start_index))
+        
+        signals.sort(key=lambda s: s.index)
         
         signals.sort(key=lambda s: s.index)
         return signals
